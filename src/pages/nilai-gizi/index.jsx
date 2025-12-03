@@ -1,7 +1,12 @@
 import { useState } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function NilaiGizi() {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
+    nama: '',
     beratBadan: '',
     tinggiBadan: '',
     usia: '',
@@ -13,6 +18,8 @@ export default function NilaiGizi() {
   });
 
   const [hasil, setHasil] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -118,6 +125,57 @@ export default function NilaiGizi() {
   const handleSubmit = (e) => {
     e.preventDefault();
     calculateResults();
+    setSaveSuccess(false);
+  };
+
+  const simpanKeFirestore = async () => {
+    if (!user) {
+      alert('Harap login terlebih dahulu untuk menyimpan data!');
+      return;
+    }
+
+    if (!hasil || !formData.nama) {
+      alert('Harap isi nama dan hitung nilai gizi terlebih dahulu!');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const dataToSave = {
+        userId: user.uid,
+        userEmail: user.email,
+
+        nama: formData.nama,
+        beratBadan: parseFloat(formData.beratBadan),
+        tinggiBadan: parseFloat(formData.tinggiBadan),
+        usia: parseInt(formData.usia),
+        jenisKelamin: formData.jenisKelamin,
+        aktivitasFisik: formData.aktivitasFisik,
+        kondisi: formData.kondisi,
+        faktorStress: formData.faktorStress,
+        jenisDiet: formData.jenisDiet,
+
+        imt: parseFloat(hasil.imt),
+        kategoriIMT: hasil.kategoriIMT,
+        bbi: parseFloat(hasil.bbi),
+        bmr: parseFloat(hasil.bmr),
+        tee: parseFloat(hasil.tee),
+        kh: parseFloat(hasil.kh),
+        protein: parseFloat(hasil.protein),
+        lemak: parseFloat(hasil.lemak),
+
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'hasilGizi'), dataToSave);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error saving data: ', error);
+      alert('Terjadi kesalahan saat menyimpan data: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -139,6 +197,21 @@ export default function NilaiGizi() {
 
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    name="nama"
+                    value={formData.nama}
+                    onChange={handleChange}
+                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#a8e6cf] focus:border-transparent transition-all duration-300 transform hover:scale-[1.02] focus:scale-[1.02]"
+                    placeholder="Masukkan nama lengkap"
+                    required
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-gray-700">
                     Berat Badan (kg)
@@ -295,7 +368,48 @@ export default function NilaiGizi() {
 
           {hasil && (
             <div className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Hasil Perhitungan</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Hasil Perhitungan</h2>
+                {formData.nama && (
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-gray-800">{formData.nama}</p>
+                    {!user ? (
+                      <div className="mt-2">
+                        <p className="text-sm text-red-600 mb-1">Login diperlukan untuk menyimpan</p>
+                        <button
+                          onClick={() => alert('Silakan login terlebih dahulu')}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-xl text-sm"
+                        >
+                          Login Required
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={simpanKeFirestore}
+                        disabled={loading}
+                        className={`mt-2 px-6 py-2 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 ${loading
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-[#5d4037] text-white hover:bg-[#4a332c]'
+                          }`}
+                      >
+                        {loading ? 'Menyimpan...' : 'Simpan Data'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {saveSuccess && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-xl text-center">
+                  ✅ Data berhasil disimpan ke database!
+                  <a
+                    href="/zat-gizi"
+                    className="ml-2 text-blue-600 hover:text-blue-800 underline font-medium"
+                  >
+                    Lanjutkan ke Perencanaan Menu →
+                  </a>
+                </div>
+              )}
 
               <div className="space-y-6">
                 <div className="border-l-4 border-[#a8e6cf] pl-4 transition-all duration-300 hover:border-l-6">
@@ -305,8 +419,8 @@ export default function NilaiGizi() {
                     <span className="text-lg font-medium text-gray-600">kg/m²</span>
                   </div>
                   <p className={`text-lg font-semibold mt-2 transition-colors duration-300 ${hasil.kategoriIMT === 'Kurus' ? 'text-yellow-600' :
-                      hasil.kategoriIMT === 'Normal' ? 'text-green-600' :
-                        hasil.kategoriIMT === 'Gemuk' ? 'text-orange-600' : 'text-red-600'
+                    hasil.kategoriIMT === 'Normal' ? 'text-green-600' :
+                      hasil.kategoriIMT === 'Gemuk' ? 'text-orange-600' : 'text-red-600'
                     }`}>
                     {hasil.kategoriIMT}
                   </p>

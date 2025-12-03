@@ -1,10 +1,5 @@
-// src/pages/register/index.jsx
 import { useState } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  updateProfile  // PERBAIKAN: Tambahkan import updateProfile
-} from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -43,10 +38,8 @@ export default function RegisterPage() {
     }
 
     try {
-      // PERBAIKAN: Simpan displayName saat registrasi
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // PERBAIKAN: Update profile dengan nama
+
       await updateProfile(user, {
         displayName: name
       });

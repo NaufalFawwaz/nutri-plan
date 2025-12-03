@@ -95,7 +95,7 @@ export default function HomePageContent() {
       icon: <FiTrendingUp className="w-8 h-8" />,
       title: "Kebutuhan Energi & Zat Gizi",
       description: "Hitung Total Energy Expenditure dan kebutuhan gizi makro-mikro",
-      points: ["TEE berdasarkan aktivitas", "Protein, lemak, karbohidrat", "Zat besi & kalsium", "Personalized plan"]
+      points: ["TEE berdasarkan aktivitas", "Protein, lemak, karbohidrat", "Personalized plan"]
     },
     {
       icon: <FiCalendar className="w-8 h-8" />,

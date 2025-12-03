@@ -1,4 +1,3 @@
-// src/components/layout/Navbar.jsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -239,12 +238,10 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
-  // PERBAIKAN: Listen untuk perubahan user data
   useEffect(() => {
     setUser(userFromHook);
   }, [userFromHook]);
 
-  // PERBAIKAN: Tambahkan listener untuk custom event dari profile page
   useEffect(() => {
     const handleUserUpdate = () => {
       if (auth.currentUser) {
@@ -254,10 +251,8 @@ export default function Navbar() {
       }
     };
 
-    // Listen untuk custom event dari profile page
     window.addEventListener('userProfileUpdated', handleUserUpdate);
     
-    // Juga listen untuk auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
     });
