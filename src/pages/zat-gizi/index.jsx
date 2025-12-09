@@ -35,12 +35,21 @@ const ZatGiziPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentMeal, setCurrentMeal] = useState('');
   const [selectedFood, setSelectedFood] = useState('');
+  const [selectedFoodWeight, setSelectedFoodWeight] = useState(100);
   const [searchTerm, setSearchTerm] = useState('');
   const [foodCategories, setFoodCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  const [editingWeights, setEditingWeights] = useState({});
+
   useEffect(() => {
-    const categories = [...new Set(dataGizi.map(food => food.GOLONGAN || 'Lainnya'))];
+    const categories = [...new Set(dataGizi.map(food => {
+      if (food.KODE && food.KODE.startsWith('AR')) return 'Bahan Mentah';
+      if (food.KODE && food.KODE.startsWith('AP')) return 'Produk Olahan';
+      if (food.KODE && food.KODE.startsWith('BR')) return 'Umbi-umbian';
+      if (food.KODE && food.KODE.startsWith('BP')) return 'Produk Umbi';
+      return 'Lainnya';
+    }))];
     setFoodCategories(categories);
   }, []);
 
@@ -108,6 +117,7 @@ const ZatGiziPage = () => {
       snackSore: [],
       makanMalam: []
     });
+    setEditingWeights({});
     setSaveSuccess(false);
   };
 
@@ -120,22 +130,54 @@ const ZatGiziPage = () => {
     setDialogOpen(true);
     setSearchTerm('');
     setSelectedCategory('');
+    setSelectedFood('');
+    setSelectedFoodWeight(100);
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedFood('');
+    setSelectedFoodWeight(100);
     setSearchTerm('');
     setSelectedCategory('');
+  };
+
+  const calculateNutritionValues = (foodData, beratBahan) => {
+    const bdd = foodData.BDD_persen || 100;
+    const beratSaji = (beratBahan * bdd) / 100;
+    const factor = beratSaji / 100;
+    
+    return {
+      energi: (foodData.ENERGI_Kal || 0) * factor,
+      protein: (foodData.PROTEIN_g || 0) * factor,
+      lemak: (foodData.LEMAK_g || 0) * factor,
+      karbohidrat: (foodData.KH_g || 0) * factor,
+      serat: (foodData.SERAT_g || 0) * factor,
+      natrium: (foodData.NATRIUM_mg || 0) * factor,
+      kalium: (foodData.KALIUM_mg || 0) * factor,
+      kalsium: (foodData.KALSIUM_mg || 0) * factor,
+      besi: (foodData.BESI_mg || 0) * factor
+    };
   };
 
   const handleAddFood = () => {
     if (selectedFood && currentMeal) {
       const foodData = dataGizi.find(item => item.KODE === selectedFood);
       if (foodData) {
+        const weight = selectedFoodWeight === "" || selectedFoodWeight < 1 ? 100 : selectedFoodWeight;
+        
+        const newFood = {
+          kode: foodData.KODE,
+          nama: foodData.NAMA_BAHAN,
+          beratBahan: weight,
+          bdd: foodData.BDD_persen || 100,
+          data: foodData,
+          nutritionValues: calculateNutritionValues(foodData, weight)
+        };
+        
         setSelectedFoods(prev => ({
           ...prev,
-          [currentMeal]: [...prev[currentMeal], foodData]
+          [currentMeal]: [...prev[currentMeal], newFood]
         }));
       }
       handleCloseDialog();
@@ -147,9 +189,74 @@ const ZatGiziPage = () => {
       ...prev,
       [mealType]: prev[mealType].filter((_, i) => i !== index)
     }));
+    
+    const key = `${mealType}-${index}`;
+    if (editingWeights[key]) {
+      const newEditingWeights = { ...editingWeights };
+      delete newEditingWeights[key];
+      setEditingWeights(newEditingWeights);
+    }
   };
 
-  // Fungsi untuk menyimpan menu ke Firestore
+  const updateFoodWeight = (mealType, index, newWeight) => {
+    const weightNum = parseInt(newWeight);
+    
+    let validatedWeight;
+    if (isNaN(weightNum) || weightNum < 1) {
+      validatedWeight = 1;
+    } else if (weightNum > 10000) {
+      validatedWeight = 10000;
+    } else {
+      validatedWeight = weightNum;
+    }
+    
+    setSelectedFoods(prev => {
+      const updatedFoods = [...prev[mealType]];
+      const food = updatedFoods[index];
+      
+      if (food) {
+        updatedFoods[index] = {
+          ...food,
+          beratBahan: validatedWeight,
+          nutritionValues: calculateNutritionValues(food.data, validatedWeight)
+        };
+      }
+      
+      return {
+        ...prev,
+        [mealType]: updatedFoods
+      };
+    });
+    
+    const key = `${mealType}-${index}`;
+    if (editingWeights[key]) {
+      const newEditingWeights = { ...editingWeights };
+      delete newEditingWeights[key];
+      setEditingWeights(newEditingWeights);
+    }
+  };
+
+  const handleWeightInputChange = (mealType, index, value) => {
+    const key = `${mealType}-${index}`;
+    setEditingWeights(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleWeightInputBlur = (mealType, index, value) => {
+    if (value === "") {
+      updateFoodWeight(mealType, index, 1);
+    } else {
+      const numValue = parseInt(value);
+      if (isNaN(numValue) || numValue < 1) {
+        updateFoodWeight(mealType, index, 1);
+      } else {
+        updateFoodWeight(mealType, index, numValue);
+      }
+    }
+  };
+
   const simpanMenuKeFirestore = async () => {
     if (!user || !selectedPasien) {
       alert('Harap login dan pilih pasien terlebih dahulu!');
@@ -199,7 +306,6 @@ const ZatGiziPage = () => {
         updatedAt: new Date()
       };
 
-      // Simpan ke collection menuGizi dengan ID yang sama dengan pasien
       await setDoc(doc(db, 'menuGizi', selectedPasien.id), menuData);
       
       setSaveSuccess(true);
@@ -215,23 +321,37 @@ const ZatGiziPage = () => {
 
   const filteredFoods = dataGizi.filter(food => {
     const matchesSearch = food.NAMA_BAHAN.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || food.GOLONGAN === selectedCategory;
+
+    let foodCategory = 'Lainnya';
+    if (food.KODE && food.KODE.startsWith('AR')) foodCategory = 'Bahan Mentah';
+    else if (food.KODE && food.KODE.startsWith('AP')) foodCategory = 'Produk Olahan';
+    else if (food.KODE && food.KODE.startsWith('BR')) foodCategory = 'Umbi-umbian';
+    else if (food.KODE && food.KODE.startsWith('BP')) foodCategory = 'Produk Umbi';
+    
+    const matchesCategory = !selectedCategory || foodCategory === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const calculateSubTotal = (mealType) => {
     const foods = selectedFoods[mealType];
-    return {
-      energi: foods.reduce((sum, food) => sum + (food.ENERGI_Kal || 0), 0),
-      protein: foods.reduce((sum, food) => sum + (food.PROTEIN_g || 0), 0),
-      lemak: foods.reduce((sum, food) => sum + (food.LEMAK_g || 0), 0),
-      karbohidrat: foods.reduce((sum, food) => sum + (food.KH_g || 0), 0),
-      serat: foods.reduce((sum, food) => sum + (food.SERAT_g || 0), 0),
-      natrium: foods.reduce((sum, food) => sum + (food.NATRIUM_mg || 0), 0),
-      kalium: foods.reduce((sum, food) => sum + (food.KALIUM_mg || 0), 0),
-      kalsium: foods.reduce((sum, food) => sum + (food.KALSIUM_mg || 0), 0),
-      besi: foods.reduce((sum, food) => sum + (food.BESI_mg || 0), 0)
-    };
+    
+    return foods.reduce((totals, food) => {
+      const values = food.nutritionValues;
+      return {
+        energi: totals.energi + (values.energi || 0),
+        protein: totals.protein + (values.protein || 0),
+        lemak: totals.lemak + (values.lemak || 0),
+        karbohidrat: totals.karbohidrat + (values.karbohidrat || 0),
+        serat: totals.serat + (values.serat || 0),
+        natrium: totals.natrium + (values.natrium || 0),
+        kalium: totals.kalium + (values.kalium || 0),
+        kalsium: totals.kalsium + (values.kalsium || 0),
+        besi: totals.besi + (values.besi || 0)
+      };
+    }, {
+      energi: 0, protein: 0, lemak: 0, karbohidrat: 0, serat: 0,
+      natrium: 0, kalium: 0, kalsium: 0, besi: 0
+    });
   };
 
   const calculateTotal = () => {
@@ -355,7 +475,6 @@ const ZatGiziPage = () => {
           </div>
         </div>
 
-        {/* Success Message */}
         {saveSuccess && (
           <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg text-center">
             ✅ Menu berhasil disimpan! Lihat di <a href="/history" className="font-semibold underline">Riwayat</a>
@@ -523,7 +642,6 @@ const ZatGiziPage = () => {
                 </div>
               </div>
 
-              {/* Save Menu Button */}
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={simpanMenuKeFirestore}
@@ -577,35 +695,81 @@ const ZatGiziPage = () => {
                           <p className="text-gray-400 text-xs mt-1">Tambahkan makanan</p>
                         </div>
                       ) : (
-                        selectedFoods[meal.key].map((food, index) => (
-                          <div key={index} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:bg-white transition-colors duration-150">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-800 text-sm">{food.NAMA_BAHAN}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded border border-blue-100">
-                                    {food.ENERGI_Kal || 0} Kal
-                                  </span>
-                                  <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded border border-green-100">
-                                    P: {food.PROTEIN_g || 0}g
-                                  </span>
-                                  <span className="text-xs px-2 py-1 bg-yellow-50 text-yellow-700 rounded border border-yellow-100">
-                                    L: {food.LEMAK_g || 0}g
-                                  </span>
+                        selectedFoods[meal.key].map((food, index) => {
+                          const key = `${meal.key}-${index}`;
+                          const isEditing = editingWeights[key] !== undefined;
+                          const displayValue = isEditing ? editingWeights[key] : food.beratBahan;
+                          const beratSaji = Math.round((food.beratBahan * food.bdd) / 100);
+                          
+                          return (
+                            <div key={index} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:bg-white transition-colors duration-150">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-800 text-sm">{food.nama}</p>
+                                  
+                                  <div className="flex flex-wrap items-center gap-2 mt-2 mb-3">
+                                    <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded border border-blue-100">
+                                      {food.beratBahan}g bahan
+                                    </span>
+                                    <span className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded border border-purple-100">
+                                      BDD: {food.bdd}%
+                                    </span>
+                                    <span className="text-xs px-2 py-1 bg-gray-50 text-gray-700 rounded border border-gray-100">
+                                      Saji: {beratSaji}g
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-1 bg-orange-50 text-orange-700 rounded border border-orange-100">
+                                      {Math.round(food.nutritionValues.energi || 0)} Kal
+                                    </span>
+                                    <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded border border-green-100">
+                                      P: {Math.round(food.nutritionValues.protein || 0)}g
+                                    </span>
+                                    <span className="text-xs px-2 py-1 bg-yellow-50 text-yellow-700 rounded border border-yellow-100">
+                                      L: {Math.round(food.nutritionValues.lemak || 0)}g
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="mt-3 flex items-center">
+                                    <span className="text-xs text-gray-600 mr-2">Berat bahan:</span>
+                                    <div className="flex items-center border border-gray-200 rounded overflow-hidden">
+                                      <input
+                                        type="number"
+                                        value={displayValue}
+                                        onChange={(e) => {
+                                          handleWeightInputChange(meal.key, index, e.target.value);
+                                        }}
+                                        onBlur={(e) => {
+                                          handleWeightInputBlur(meal.key, index, e.target.value);
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.target.blur();
+                                          }
+                                        }}
+                                        className="w-20 px-2 py-1 text-sm text-gray-700 border-r border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#a8e6cf]"
+                                        min="1"
+                                        max="10000"
+                                      />
+                                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs">g</span>
+                                    </div>
+                                  </div>
                                 </div>
+                                
+                                <button
+                                  onClick={() => removeFood(meal.key, index)}
+                                  className="ml-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-red-100"
+                                  title="Hapus makanan"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => removeFood(meal.key, index)}
-                                className="ml-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-red-100"
-                                title="Hapus makanan"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
 
@@ -744,23 +908,131 @@ const ZatGiziPage = () => {
 
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="max-w-2xl mx-auto">
-                  <div className="relative w-full">
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a8e6cf] focus:border-transparent transition duration-200"
-                      placeholder="Cari makanan (nasi, ayam, sayur, dll.)"
-                    />
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a8e6cf] focus:border-transparent transition duration-200"
+                        placeholder="Cari makanan (nasi, ayam, sayur, dll.)"
+                      />
+                    </div>
+                    <div className="w-full md:w-48">
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a8e6cf] focus:border-transparent transition duration-200"
+                      >
+                        <option value="">Semua Kategori</option>
+                        {foodCategories.map((category, index) => (
+                          <option key={index} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                {filteredFoods.length === 0 ? (
+                {selectedFood ? (
+                  <div className="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-lg text-gray-900">
+                          {dataGizi.find(f => f.KODE === selectedFood)?.NAMA_BAHAN}
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          BDD: <span className="font-medium">{dataGizi.find(f => f.KODE === selectedFood)?.BDD_persen || 100}%</span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedFood('')}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="text-center p-4 bg-white rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600">Energi per 100g</p>
+                        <p className="font-bold text-lg text-gray-900">
+                          {dataGizi.find(f => f.KODE === selectedFood)?.ENERGI_Kal || 0} Kal
+                        </p>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600">Protein per 100g</p>
+                        <p className="font-bold text-lg text-gray-900">
+                          {dataGizi.find(f => f.KODE === selectedFood)?.PROTEIN_g || 0} g
+                        </p>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600">Lemak per 100g</p>
+                        <p className="font-bold text-lg text-gray-900">
+                          {dataGizi.find(f => f.KODE === selectedFood)?.LEMAK_g || 0} g
+                        </p>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600">Karbo per 100g</p>
+                        <p className="font-bold text-lg text-gray-900">
+                          {dataGizi.find(f => f.KODE === selectedFood)?.KH_g || 0} g
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Berat Bahan (gram)
+                      </label>
+                      <div className="flex items-center">
+                        <input
+                          type="number"
+                          value={selectedFoodWeight}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "") {
+                              setSelectedFoodWeight("");
+                            } else {
+                              const numValue = parseInt(value);
+                              if (!isNaN(numValue)) {
+                                const clampedValue = Math.min(Math.max(1, numValue), 10000);
+                                setSelectedFoodWeight(clampedValue);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            if (selectedFoodWeight === "" || selectedFoodWeight < 1) {
+                              setSelectedFoodWeight(100);
+                            }
+                          }}
+                          className="flex-1 text-black px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#a8e6cf] focus:border-transparent"
+                          min="1"
+                          max="10000"
+                          placeholder="Masukkan berat bahan"
+                        />
+                        <span className="ml-3 text-gray-600 text-lg">gram</span>
+                      </div>
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <p className="text-sm text-blue-700">
+                          <span className="font-medium">Berat Saji:</span>{' '}
+                          {Math.round((selectedFoodWeight * (dataGizi.find(f => f.KODE === selectedFood)?.BDD_persen || 100)) / 100)}g
+                          {' '}({selectedFoodWeight || 0}g × {(dataGizi.find(f => f.KODE === selectedFood)?.BDD_persen || 100)}% / 100)
+                        </p>
+                        <p className="text-sm text-blue-700 mt-1">
+                          <span className="font-medium">Energi estimasi:</span>{' '}
+                          {Math.round(((dataGizi.find(f => f.KODE === selectedFood)?.ENERGI_Kal || 0) * 
+                            (((selectedFoodWeight || 0) * (dataGizi.find(f => f.KODE === selectedFood)?.BDD_persen || 100)) / 100)) / 100)} Kal
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : filteredFoods.length === 0 ? (
                   <div className="text-center py-12">
                     <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -784,7 +1056,10 @@ const ZatGiziPage = () => {
                             <h4 className="font-semibold text-gray-900 mb-1">{food.NAMA_BAHAN}</h4>
                             <div className="flex items-center gap-2 mb-3">
                               <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded border border-gray-200">
-                                {food.GOLONGAN || 'Umum'}
+                                {food.KODE}
+                              </span>
+                              <span className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded border border-purple-100">
+                                BDD: {food.BDD_persen || 100}%
                               </span>
                             </div>
 
@@ -835,7 +1110,7 @@ const ZatGiziPage = () => {
                     <p className="text-sm text-gray-600">
                       {selectedFood ? (
                         <span className="font-medium text-gray-900">
-                          {dataGizi.find(f => f.KODE === selectedFood)?.NAMA_BAHAN}
+                          {dataGizi.find(f => f.KODE === selectedFood)?.NAMA_BAHAN} ({selectedFoodWeight || 0}g bahan)
                         </span>
                       ) : (
                         'Belum ada makanan terpilih'
@@ -854,8 +1129,8 @@ const ZatGiziPage = () => {
                     </button>
                     <button
                       onClick={handleAddFood}
-                      disabled={!selectedFood}
-                      className={`px-5 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#a8e6cf] transition duration-200 border ${selectedFood
+                      disabled={!selectedFood || (selectedFoodWeight !== "" && selectedFoodWeight < 1)}
+                      className={`px-5 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#a8e6cf] transition duration-200 border ${selectedFood && (selectedFoodWeight === "" || selectedFoodWeight >= 1)
                           ? 'bg-[#a8e6cf] text-[#5d4037] hover:bg-[#93d4bc] border-[#a8e6cf]'
                           : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                         }`}

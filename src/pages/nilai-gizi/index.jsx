@@ -49,15 +49,24 @@ export default function NilaiGizi() {
     let kategoriIMT = '';
     if (imt < 18.5) kategoriIMT = 'Kurus';
     else if (imt >= 18.5 && imt <= 24.9) kategoriIMT = 'Normal';
-    else if (imt >= 25.0 && imt <= 29.9) kategoriIMT = 'Gemuk';
+    else if (imt >= 25.0 && imt <= 27.9) kategoriIMT = 'Gemuk';
     else kategoriIMT = 'Obesitas';
 
     const tbCm = parseFloat(tinggiBadan);
     let bbi;
+
     if (jenisKelamin === 'L') {
-      bbi = (tbCm - 100) - (0.1 * (tbCm - 100));
+      if (tbCm < 160) {
+        bbi = tbCm - 100;
+      } else {
+        bbi = (tbCm - 100) - (0.1 * (tbCm - 100));
+      }
     } else {
-      bbi = (tbCm - 100) - (0.15 * (tbCm - 100));
+      if (tbCm < 150) {
+        bbi = tbCm - 100;
+      } else {
+        bbi = (tbCm - 100) - (0.15 * (tbCm - 100));
+      }
     }
 
     let bmr;
@@ -67,12 +76,14 @@ export default function NilaiGizi() {
       bmr = (10 * bb) + (6.25 * tbCm) - (5 * umur) - 161;
     }
 
-    const faktorAktivitas = {
-      'Istirahat': 1.2,
-      'Ringan': 1.3,
-      'Sedang': 1.4,
-      'Berat': 1.5
+    const faktorAktivitasMap = {
+      'Istirahat': { L: 1.3, P: 1.3 },
+      'Ringan': { L: 1.6, P: 1.5 },
+      'Sedang': { L: 1.7, P: 1.6 },
+      'Berat': { L: 2.1, P: 1.9 }
     };
+
+    const faktorAktivitas = faktorAktivitasMap[aktivitasFisik][jenisKelamin];
 
     const faktorStressMap = {
       'Tidak Stress': 1.3,
@@ -85,9 +96,9 @@ export default function NilaiGizi() {
 
     let tee;
     if (kondisi === 'Sehat') {
-      tee = bmr * faktorAktivitas[aktivitasFisik];
+      tee = bmr * faktorAktivitas;
     } else {
-      tee = bmr * faktorAktivitas[aktivitasFisik] * faktorStressMap[faktorStress];
+      tee = bmr * faktorAktivitas * faktorStressMap[faktorStress];
     }
 
     const komposisiDiet = {

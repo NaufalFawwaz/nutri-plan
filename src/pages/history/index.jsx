@@ -64,33 +64,58 @@ const HistoryPage = () => {
       const menuRef = doc(db, 'menuGizi', pasien.id);
       const menuSnap = await getDoc(menuRef);
 
-      console.log('Menu Ref Path:', menuRef.path);
-      console.log('Menu Snapshot exists:', menuSnap.exists());
+      console.log('🔍 Menu Ref Path:', menuRef.path);
+      console.log('📊 Menu Snapshot exists:', menuSnap.exists());
 
       if (menuSnap.exists()) {
         const data = menuSnap.data();
-        console.log('Menu Data:', data);
-        console.log('Menu Keys:', Object.keys(data));
-        console.log('Has totals?', 'totals' in data);
-        console.log('Has menu?', 'menu' in data);
+        console.log('📦 Menu Data full:', data);
         
-        if (data.menu) {
-          console.log('Menu structure keys:', Object.keys(data.menu));
-          console.log('Has makanPagi in menu?', 'makanPagi' in data.menu);
-          console.log('makanPagi data:', data.menu.makanPagi);
+        // Periksa struktur data
+        if (data && typeof data === 'object') {
+          console.log('📋 Data keys:', Object.keys(data));
+          
+          // Cek apakah data.menu ada dan valid
+          if (data.menu && typeof data.menu === 'object') {
+            console.log('✅ Data.menu ditemukan');
+            console.log('🍽️ Menu keys:', Object.keys(data.menu));
+            
+            const mealTypes = ['makanPagi', 'snackPagi', 'makanSiang', 'snackSore', 'makanMalam'];
+            mealTypes.forEach(mealType => {
+              const mealData = data.menu[mealType];
+              console.log(`- ${mealType}:`, 
+                mealData ? 
+                  (Array.isArray(mealData) ? `${mealData.length} items` : `type: ${typeof mealData}`) 
+                  : 'undefined'
+              );
+              
+              if (Array.isArray(mealData) && mealData.length > 0) {
+                console.log(`  Contoh item pertama:`, mealData[0]);
+              }
+            });
+            
+            setMenuData(data);
+          } else {
+            console.log('❌ Data.menu tidak ditemukan atau bukan object');
+            console.log('Data.menu:', data.menu);
+            setMenuData(null);
+          }
+        } else {
+          console.log('❌ Data tidak valid');
+          setMenuData(null);
         }
-        
-        setMenuData(data);
       } else {
-        console.log('No menu found for patient ID:', pasien.id);
+        console.log('⚠️ No menu found for patient ID:', pasien.id);
         console.log('Patient Name:', pasien.nama);
+        setMenuData(null);
       }
     } catch (error) {
-      console.error('Error details:', {
+      console.error('❌ Error details:', {
         code: error.code,
         message: error.message,
         stack: error.stack
       });
+      setMenuData(null);
     }
   };
 
@@ -180,168 +205,226 @@ const HistoryPage = () => {
   };
 
   const exportFullReportToPDF = () => {
-    if (!selectedPasien) {
-      alert('Pilih pasien terlebih dahulu');
-      return;
-    }
+  if (!selectedPasien) {
+    alert('Pilih pasien terlebih dahulu');
+    return;
+  }
 
-    setExportLoading(true);
+  setExportLoading(true);
 
-    try {
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.width;
-      const margin = 15;
-      let yPos = margin;
+  try {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.width;
+    const margin = 15;
+    let yPos = margin;
 
-      doc.setFontSize(16);
-      doc.setTextColor(93, 64, 55);
-      doc.text('LAPORAN LENGKAP GIZI PASIEN', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
+    doc.setFontSize(16);
+    doc.setTextColor(93, 64, 55);
+    doc.text('LAPORAN LENGKAP GIZI PASIEN', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 8;
 
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `Dibuat pada: ${new Date().toLocaleDateString('id-ID', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}`,
-        pageWidth / 2,
-        yPos,
-        { align: 'center' }
-      );
-      yPos += 12;
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Dibuat pada: ${new Date().toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`,
+      pageWidth / 2,
+      yPos,
+      { align: 'center' }
+    );
+    yPos += 12;
 
-      doc.setFontSize(12);
-      doc.setTextColor(93, 64, 55);
+    doc.setFontSize(12);
+    doc.setTextColor(93, 64, 55);
+    doc.setFont(undefined, 'bold');
+    doc.text('IDENTITAS PASIEN', margin, yPos);
+    yPos += 7;
+
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'normal');
+
+    const leftColumn = [
+      ['Nama Lengkap', selectedPasien.nama],
+      ['Usia', `${selectedPasien.usia} tahun`],
+      ['Jenis Kelamin', selectedPasien.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'],
+      ['Berat Badan', `${selectedPasien.beratBadan} kg`],
+      ['Tinggi Badan', `${selectedPasien.tinggiBadan} cm`]
+    ];
+
+    const rightColumn = [
+      ['Jenis Diet', selectedPasien.jenisDiet],
+      ['Aktivitas Fisik', selectedPasien.aktivitasFisik],
+      ['Kondisi Kesehatan', selectedPasien.kondisi],
+      ['Faktor Stress', selectedPasien.faktorStress || 'Tidak ada'],
+      ['Tanggal Data', formatDate(selectedPasien.createdAt)]
+    ];
+
+    const columnWidth = (pageWidth - (margin * 2) - 10) / 2;
+
+    leftColumn.forEach(([label, value], index) => {
       doc.setFont(undefined, 'bold');
-      doc.text('IDENTITAS PASIEN', margin, yPos);
-      yPos += 7;
-
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
+      doc.text(`${label}:`, margin, yPos);
       doc.setFont(undefined, 'normal');
+      doc.text(value, margin + 40, yPos);
+      yPos += 5;
+    });
 
-      const leftColumn = [
-        ['Nama Lengkap', selectedPasien.nama],
-        ['Usia', `${selectedPasien.usia} tahun`],
-        ['Jenis Kelamin', selectedPasien.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'],
-        ['Berat Badan', `${selectedPasien.beratBadan} kg`],
-        ['Tinggi Badan', `${selectedPasien.tinggiBadan} cm`]
-      ];
+    yPos = margin + 27;
 
-      const rightColumn = [
-        ['Jenis Diet', selectedPasien.jenisDiet],
-        ['Aktivitas Fisik', selectedPasien.aktivitasFisik],
-        ['Kondisi Kesehatan', selectedPasien.kondisi],
-        ['Faktor Stress', selectedPasien.faktorStress || 'Tidak ada'],
-        ['Tanggal Data', formatDate(selectedPasien.createdAt)]
-      ];
+    rightColumn.forEach(([label, value], index) => {
+      const xPos = margin + columnWidth + 10;
+      doc.setFont(undefined, 'bold');
+      doc.text(`${label}:`, xPos, yPos);
+      doc.setFont(undefined, 'normal');
+      doc.text(value, xPos + 40, yPos);
+      yPos += 5;
+    });
 
-      const columnWidth = (pageWidth - (margin * 2) - 10) / 2;
+    yPos = Math.max(margin + 27 + (rightColumn.length * 5), margin + 27 + (leftColumn.length * 5));
+    yPos += 10;
 
-      leftColumn.forEach(([label, value], index) => {
-        doc.setFont(undefined, 'bold');
-        doc.text(`${label}:`, margin, yPos);
-        doc.setFont(undefined, 'normal');
-        doc.text(value, margin + 40, yPos);
-        yPos += 5;
-      });
+    doc.setFontSize(12);
+    doc.setTextColor(93, 64, 55);
+    doc.setFont(undefined, 'bold');
+    doc.text('HASIL PERHITUNGAN GIZI', margin, yPos);
+    yPos += 7;
 
-      yPos = margin + 27;
+    const gridWidth = (pageWidth - (margin * 2) - 15) / 4;
+    const gridData = [
+      {
+        label: 'IMT',
+        value: String(selectedPasien.imt || '0.00'),
+        sublabel: selectedPasien.kategoriIMT || '-',
+        color: selectedPasien.kategoriIMT === 'Normal' ? [168, 230, 207] :
+          selectedPasien.kategoriIMT === 'Kurus' ? [255, 224, 130] :
+            [255, 138, 128]
+      },
+      {
+        label: 'BBI',
+        value: `${selectedPasien.bbi || calculateBBI(selectedPasien)} kg`,
+        sublabel: 'Berat Badan Ideal',
+        color: [144, 202, 249]
+      },
+      {
+        label: 'TEE',
+        value: `${selectedPasien.tee || '0.00'} kkal`,
+        sublabel: 'Energi Total',
+        color: [255, 204, 188]
+      },
+      {
+        label: 'BMR',
+        value: `${selectedPasien.bmr || '0.00'} kkal`,
+        sublabel: 'Energi Basal',
+        color: [206, 147, 216]
+      }
+    ];
 
-      rightColumn.forEach(([label, value], index) => {
-        const xPos = margin + columnWidth + 10;
-        doc.setFont(undefined, 'bold');
-        doc.text(`${label}:`, xPos, yPos);
-        doc.setFont(undefined, 'normal');
-        doc.text(value, xPos + 40, yPos);
-        yPos += 5;
-      });
+    gridData.forEach((item, index) => {
+      const x = margin + (index * (gridWidth + 5));
+      doc.setFillColor(...item.color);
+      doc.roundedRect(x, yPos, gridWidth, 20, 2, 2, 'F');
 
-      yPos = Math.max(margin + 27 + (rightColumn.length * 5), margin + 27 + (leftColumn.length * 5));
-      yPos += 10;
+      doc.setFontSize(9);
+      doc.setTextColor(93, 64, 55);
+      doc.text(item.label, x + 3, yPos + 6);
 
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'bold');
+
+      const valueText = String(item.value);
+      doc.text(valueText, x + 3, yPos + 12, { maxWidth: gridWidth - 6 });
+
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(item.sublabel, x + 3, yPos + 17, { maxWidth: gridWidth - 6 });
+    });
+
+    yPos += 25;
+
+    doc.setFontSize(12);
+    doc.setTextColor(93, 64, 55);
+    doc.setFont(undefined, 'bold');
+    doc.text('KEBUTUHAN GIZI HARIAN', margin, yPos);
+    yPos += 7;
+
+    const nutritionTable = [
+      ['ZAT GIZI', 'KEBUTUHAN', 'SATUAN'],
+      ['Energi (TEE)', (selectedPasien.tee || 0).toFixed(1), 'kkal'],
+      ['Protein', (selectedPasien.protein || 0).toFixed(1), 'g'],
+      ['Lemak', (selectedPasien.lemak || 0).toFixed(1), 'g'],
+      ['Karbohidrat', (selectedPasien.kh || 0).toFixed(1), 'g']
+    ];
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [nutritionTable[0]],
+      body: nutritionTable.slice(1),
+      theme: 'grid',
+      headStyles: {
+        fillColor: [93, 64, 55],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 9
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [0, 0, 0]
+      },
+      margin: { left: margin, right: margin },
+      styles: {
+        cellPadding: 3,
+        lineWidth: 0.1
+      }
+    });
+
+    yPos = doc.lastAutoTable.finalY + 10;
+
+    if (menuData && menuData.totals && menuData.menu) {
       doc.setFontSize(12);
       doc.setTextColor(93, 64, 55);
       doc.setFont(undefined, 'bold');
-      doc.text('HASIL PERHITUNGAN GIZI', margin, yPos);
+      doc.text('RINGKASAN NUTRISI DARI MENU', margin, yPos);
       yPos += 7;
 
-      const gridWidth = (pageWidth - (margin * 2) - 15) / 4;
-      const gridData = [
-        {
-          label: 'IMT',
-          value: String(selectedPasien.imt || '0.00'),
-          sublabel: selectedPasien.kategoriIMT || '-',
-          color: selectedPasien.kategoriIMT === 'Normal' ? [168, 230, 207] :
-            selectedPasien.kategoriIMT === 'Kurus' ? [255, 224, 130] :
-              [255, 138, 128]
-        },
-        {
-          label: 'BBI',
-          value: `${selectedPasien.bbi || calculateBBI(selectedPasien)} kg`,
-          sublabel: 'Berat Badan Ideal',
-          color: [144, 202, 249]
-        },
-        {
-          label: 'TEE',
-          value: `${selectedPasien.tee || '0.00'} kkal`,
-          sublabel: 'Energi Total',
-          color: [255, 204, 188]
-        },
-        {
-          label: 'BMR',
-          value: `${selectedPasien.bmr || '0.00'} kkal`,
-          sublabel: 'Energi Basal',
-          color: [206, 147, 216]
-        }
+      const summaryTable = [
+        ['NUTRISI', 'TOTAL', 'KECUKUPAN', 'STATUS']
       ];
 
-      gridData.forEach((item, index) => {
-        const x = margin + (index * (gridWidth + 5));
-        doc.setFillColor(...item.color);
-        doc.roundedRect(x, yPos, gridWidth, 20, 2, 2, 'F');
+      const nutrients = [
+        { key: 'energi', label: 'Energi', satuan: 'Kal' },
+        { key: 'protein', label: 'Protein', satuan: 'g' },
+        { key: 'lemak', label: 'Lemak', satuan: 'g' },
+        { key: 'karbohidrat', label: 'Karbohidrat', satuan: 'g' }
+      ];
 
-        doc.setFontSize(9);
-        doc.setTextColor(93, 64, 55);
-        doc.text(item.label, x + 3, yPos + 6);
+      nutrients.forEach(nutrient => {
+        const total = menuData.totals[nutrient.key] || 0;
+        const kebutuhan = selectedPasien[nutrient.key === 'energi' ? 'tee' :
+          nutrient.key === 'karbohidrat' ? 'kh' :
+            nutrient.key] || 0;
+        const percentage = calculateNutrientPercentage(total, kebutuhan);
+        const status = getInterpretasi(percentage);
 
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.setFont(undefined, 'bold');
-
-        const valueText = String(item.value);
-        doc.text(valueText, x + 3, yPos + 12, { maxWidth: gridWidth - 6 });
-
-        doc.setFontSize(8);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(100, 100, 100);
-        doc.text(item.sublabel, x + 3, yPos + 17, { maxWidth: gridWidth - 6 });
+        summaryTable.push([
+          nutrient.label,
+          `${total.toFixed(1)} ${nutrient.satuan}`,
+          `${percentage}%`,
+          status
+        ]);
       });
-
-      yPos += 25;
-
-      doc.setFontSize(12);
-      doc.setTextColor(93, 64, 55);
-      doc.setFont(undefined, 'bold');
-      doc.text('KEBUTUHAN GIZI HARIAN', margin, yPos);
-      yPos += 7;
-
-      const nutritionTable = [
-        ['ZAT GIZI', 'KEBUTUHAN', 'SATUAN'],
-        ['Energi (TEE)', (selectedPasien.tee || 0).toFixed(1), 'kkal'],
-        ['Protein', (selectedPasien.protein || 0).toFixed(1), 'g'],
-        ['Lemak', (selectedPasien.lemak || 0).toFixed(1), 'g'],
-        ['Karbohidrat', (selectedPasien.kh || 0).toFixed(1), 'g']
-      ];
 
       autoTable(doc, {
         startY: yPos,
-        head: [nutritionTable[0]],
-        body: nutritionTable.slice(1),
+        head: [summaryTable[0]],
+        body: summaryTable.slice(1),
         theme: 'grid',
         headStyles: {
           fillColor: [93, 64, 55],
@@ -351,266 +434,297 @@ const HistoryPage = () => {
         },
         bodyStyles: {
           fontSize: 9,
-          textColor: [0, 0, 0]
+          textColor: [0, 0, 0],
+          minCellHeight: 8
         },
         margin: { left: margin, right: margin },
         styles: {
           cellPadding: 3,
           lineWidth: 0.1
+        },
+        didDrawCell: (data) => {
+          if (data.column.index === 3 && data.row.index > 0) {
+            const status = data.cell.raw;
+            const color = getStatusColor(status);
+            doc.setFillColor(...color);
+            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+            doc.setTextColor(0, 0, 0);
+            doc.text(
+              status,
+              data.cell.x + data.cell.width / 2,
+              data.cell.y + data.cell.height / 2 + 3,
+              { align: 'center' }
+            );
+          }
+        },
+        columnStyles: {
+          0: { cellWidth: 40, halign: 'left' },
+          1: { cellWidth: 40, halign: 'center' },
+          2: { cellWidth: 30, halign: 'center' },
+          3: { cellWidth: 30, halign: 'center' }
         }
       });
 
       yPos = doc.lastAutoTable.finalY + 10;
 
-      if (menuData && menuData.totals && menuData.menu) {
+      const mealTimes = [
+        { key: 'makanPagi', label: 'Makan Pagi' },
+        { key: 'snackPagi', label: 'Snack Pagi' },
+        { key: 'makanSiang', label: 'Makan Siang' },
+        { key: 'snackSore', label: 'Snack Sore' },
+        { key: 'makanMalam', label: 'Makan Malam' }
+      ];
+
+      const validMeals = mealTimes.filter(meal => 
+        menuData.menu[meal.key] && menuData.menu[meal.key].length > 0
+      );
+
+      if (validMeals.length > 0) {
         doc.setFontSize(12);
         doc.setTextColor(93, 64, 55);
         doc.setFont(undefined, 'bold');
-        doc.text('RINGKASAN NUTRISI DARI MENU', margin, yPos);
+        doc.text('DETAIL MENU HARIAN', margin, yPos);
         yPos += 7;
 
-        const summaryTable = [
-          ['NUTRISI', 'TOTAL', 'KECUKUPAN', 'STATUS']
-        ];
+        validMeals.forEach((meal) => {
+          const foods = menuData.menu[meal.key];
 
-        const nutrients = [
-          { key: 'energi', label: 'Energi', satuan: 'Kal' },
-          { key: 'protein', label: 'Protein', satuan: 'g' },
-          { key: 'lemak', label: 'Lemak', satuan: 'g' },
-          { key: 'karbohidrat', label: 'Karbohidrat', satuan: 'g' }
-        ];
-
-        nutrients.forEach(nutrient => {
-          const total = menuData.totals[nutrient.key] || 0;
-          const kebutuhan = selectedPasien[nutrient.key === 'energi' ? 'tee' :
-            nutrient.key === 'karbohidrat' ? 'kh' :
-              nutrient.key] || 0;
-          const percentage = calculateNutrientPercentage(total, kebutuhan);
-          const status = getInterpretasi(percentage);
-
-          summaryTable.push([
-            nutrient.label,
-            `${total.toFixed(1)} ${nutrient.satuan}`,
-            `${percentage}%`,
-            status
-          ]);
-        });
-
-        autoTable(doc, {
-          startY: yPos,
-          head: [summaryTable[0]],
-          body: summaryTable.slice(1),
-          theme: 'grid',
-          headStyles: {
-            fillColor: [93, 64, 55],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 9
-          },
-          bodyStyles: {
-            fontSize: 9,
-            textColor: [0, 0, 0]
-          },
-          margin: { left: margin, right: margin },
-          styles: {
-            cellPadding: 3,
-            lineWidth: 0.1
-          },
-          didDrawCell: (data) => {
-            if (data.column.index === 3 && data.row.index >= 0) {
-              const status = data.cell.raw;
-              const color = getStatusColor(status);
-              doc.setFillColor(...color);
-              doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-              doc.setTextColor(0, 0, 0);
-            }
-          }
-        });
-
-        yPos = doc.lastAutoTable.finalY + 10;
-
-        const mealTimes = [
-          { key: 'makanPagi', label: 'Makan Pagi' },
-          { key: 'snackPagi', label: 'Snack Pagi' },
-          { key: 'makanSiang', label: 'Makan Siang' },
-          { key: 'snackSore', label: 'Snack Sore' },
-          { key: 'makanMalam', label: 'Makan Malam' }
-        ];
-
-        const validMeals = mealTimes.filter(meal => 
-          menuData.menu[meal.key] && menuData.menu[meal.key].length > 0
-        );
-
-        if (validMeals.length > 0) {
-          doc.setFontSize(12);
-          doc.setTextColor(93, 64, 55);
-          doc.setFont(undefined, 'bold');
-          doc.text('DETAIL MENU HARIAN', margin, yPos);
-          yPos += 7;
-
-          validMeals.forEach((meal) => {
-            const foods = menuData.menu[meal.key];
-
-            if (yPos > doc.internal.pageSize.height - 50) {
-              doc.addPage();
-              yPos = margin;
-            }
-
-            // Header waktu makan
-            doc.setFontSize(10);
-            doc.setTextColor(93, 64, 55);
-            doc.setFont(undefined, 'bold');
-            doc.text(`${meal.label.toUpperCase()}`, margin, yPos);
-            yPos += 5;
-
-            const mealTable = [
-              ['NO', 'NAMA MAKANAN', 'ENERGI', 'PROTEIN', 'LEMAK', 'KARBO']
-            ];
-
-            foods.forEach((food, foodIndex) => {
-              mealTable.push([
-                (foodIndex + 1).toString(),
-                food.NAMA_BAHAN.length > 30 ? food.NAMA_BAHAN.substring(0, 27) + '...' : food.NAMA_BAHAN,
-                `${(food.ENERGI_Kal || 0).toFixed(0)}`,
-                `${(food.PROTEIN_g || 0).toFixed(1)}`,
-                `${(food.LEMAK_g || 0).toFixed(1)}`,
-                `${(food.KH_g || 0).toFixed(1)}`
-              ]);
-            });
-
-            const subTotal = foods.reduce((acc, food) => ({
-              energi: acc.energi + (food.ENERGI_Kal || 0),
-              protein: acc.protein + (food.PROTEIN_g || 0),
-              lemak: acc.lemak + (food.LEMAK_g || 0),
-              karbohidrat: acc.karbohidrat + (food.KH_g || 0)
-            }), { energi: 0, protein: 0, lemak: 0, karbohidrat: 0 });
-
-            mealTable.push([
-              'TOTAL',
-              '',
-              subTotal.energi.toFixed(0),
-              subTotal.protein.toFixed(1),
-              subTotal.lemak.toFixed(1),
-              subTotal.karbohidrat.toFixed(1)
-            ]);
-
-            autoTable(doc, {
-              startY: yPos,
-              head: [mealTable[0]],
-              body: mealTable.slice(1, -1),
-              foot: [mealTable[mealTable.length - 1]],
-              theme: 'grid',
-              headStyles: {
-                fillColor: [168, 230, 207],
-                textColor: [93, 64, 55],
-                fontStyle: 'bold',
-                fontSize: 8
-              },
-              bodyStyles: {
-                fontSize: 8,
-                textColor: [0, 0, 0]
-              },
-              footStyles: {
-                fillColor: [240, 240, 240],
-                textColor: [0, 0, 0],
-                fontStyle: 'bold',
-                fontSize: 8
-              },
-              margin: { left: margin, right: margin },
-              styles: {
-                cellPadding: 2,
-                lineWidth: 0.1,
-                overflow: 'linebreak',
-                cellWidth: 'wrap'
-              },
-              columnStyles: {
-                0: { cellWidth: 10 },
-                1: { cellWidth: 50 },
-                2: { cellWidth: 20 },
-                3: { cellWidth: 20 },
-                4: { cellWidth: 20 },
-                5: { cellWidth: 20 }
-              }
-            });
-
-            yPos = doc.lastAutoTable.finalY + 8;
-          });
-        }
-      } else {
-        doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text('Catatan: Belum ada data menu harian untuk pasien ini', margin, yPos);
-        yPos += 10;
-      }
-
-      if (yPos > doc.internal.pageSize.height - 60) {
-        doc.addPage();
-        yPos = margin;
-      }
-
-      doc.setFontSize(12);
-      doc.setTextColor(93, 64, 55);
-      doc.setFont(undefined, 'bold');
-      doc.text('CATATAN DAN REKOMENDASI', margin, yPos);
-      yPos += 7;
-
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont(undefined, 'normal');
-
-      const recommendations = [
-        `Pasien ${selectedPasien.nama} dengan jenis diet ${selectedPasien.jenisDiet}.`,
-        `IMT sebesar ${selectedPasien.imt} termasuk dalam kategori ${selectedPasien.kategoriIMT}.`,
-        `Kebutuhan energi harian sebesar ${selectedPasien.tee} kkal.`,
-        menuData && menuData.totals ?
-          `Menu harian telah direncanakan dengan total ${(menuData.totals?.energi || 0).toFixed(1)} kkal.` :
-          'Belum ada menu harian yang direncanakan.',
-        `Disarankan untuk kontrol rutin setiap 1 bulan sekali.`,
-        `Perhatikan asupan cairan minimal 8 gelas per hari.`,
-        `Jaga pola makan teratur sesuai jadwal yang telah ditentukan.`
-      ];
-
-      recommendations.forEach((rec, index) => {
-        const lines = doc.splitTextToSize(`• ${rec}`, pageWidth - (margin * 2));
-        lines.forEach(line => {
-          if (yPos > doc.internal.pageSize.height - 15) {
+          if (yPos > doc.internal.pageSize.height - 50) {
             doc.addPage();
             yPos = margin;
           }
-          doc.text(line, margin + 5, yPos);
-          yPos += 4;
+
+          doc.setFontSize(10);
+          doc.setTextColor(93, 64, 55);
+          doc.setFont(undefined, 'bold');
+          doc.text(`${meal.label.toUpperCase()}`, margin, yPos);
+          yPos += 5;
+
+          const mealTable = [
+            ['NO', 'NAMA MAKANAN', 'ENERGI (Kal)', 'PROTEIN (g)', 'LEMAK (g)', 'KARBO (g)']
+          ];
+
+          foods.forEach((food, foodIndex) => {
+            const namaMakanan = food.nama || food.NAMA_BAHAN || 'Tanpa Nama';
+            mealTable.push([
+              (foodIndex + 1).toString(),
+              namaMakanan.length > 40 ? namaMakanan.substring(0, 37) + '...' : namaMakanan,
+              `${(food.ENERGI_Kal || food.nutritionValues?.energi || 0).toFixed(0)}`,
+              `${(food.PROTEIN_g || food.nutritionValues?.protein || 0).toFixed(1)}`,
+              `${(food.LEMAK_g || food.nutritionValues?.lemak || 0).toFixed(1)}`,
+              `${(food.KH_g || food.nutritionValues?.karbohidrat || 0).toFixed(1)}`
+            ]);
+          });
+
+          const subTotal = foods.reduce((acc, food) => ({
+            energi: acc.energi + (food.ENERGI_Kal || food.nutritionValues?.energi || 0),
+            protein: acc.protein + (food.PROTEIN_g || food.nutritionValues?.protein || 0),
+            lemak: acc.lemak + (food.LEMAK_g || food.nutritionValues?.lemak || 0),
+            karbohidrat: acc.karbohidrat + (food.KH_g || food.nutritionValues?.karbohidrat || 0)
+          }), { energi: 0, protein: 0, lemak: 0, karbohidrat: 0 });
+
+          mealTable.push([
+            'TOTAL',
+            '',
+            subTotal.energi.toFixed(0),
+            subTotal.protein.toFixed(1),
+            subTotal.lemak.toFixed(1),
+            subTotal.karbohidrat.toFixed(1)
+          ]);
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [mealTable[0]],
+            body: mealTable.slice(1, -1),
+            foot: [mealTable[mealTable.length - 1]],
+            theme: 'grid',
+            headStyles: {
+              fillColor: [168, 230, 207],
+              textColor: [93, 64, 55],
+              fontStyle: 'bold',
+              fontSize: 8
+            },
+            bodyStyles: {
+              fontSize: 8,
+              textColor: [0, 0, 0],
+              cellPadding: 2
+            },
+            footStyles: {
+              fillColor: [240, 240, 240],
+              textColor: [0, 0, 0],
+              fontStyle: 'bold',
+              fontSize: 9,
+              cellPadding: 3
+            },
+            margin: { left: margin, right: margin },
+            styles: {
+              cellPadding: 2,
+              lineWidth: 0.1,
+              overflow: 'linebreak',
+              cellWidth: 'wrap',
+              minCellHeight: 8
+            },
+            columnStyles: {
+              0: { 
+                cellWidth: 20, 
+                halign: 'center',
+                fontStyle: 'bold' 
+              },
+              1: { 
+                cellWidth: 65, 
+                halign: 'left',
+                cellPadding: { left: 3, right: 3, top: 2, bottom: 2 }
+              },
+              2: { 
+                cellWidth: 22, 
+                halign: 'right',
+                cellPadding: { left: 2, right: 3, top: 2, bottom: 2 }
+              },
+              3: { 
+                cellWidth: 22, 
+                halign: 'right',
+                cellPadding: { left: 2, right: 3, top: 2, bottom: 2 }
+              },
+              4: { 
+                cellWidth: 22, 
+                halign: 'right',
+                cellPadding: { left: 2, right: 3, top: 2, bottom: 2 }
+              },
+              5: { 
+                cellWidth: 22, 
+                halign: 'right',
+                cellPadding: { left: 2, right: 3, top: 2, bottom: 2 }
+              }
+            },
+            didParseCell: function(data) {
+              if (data.row.index === data.table.body.length) {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.fillColor = [220, 220, 220];
+                data.cell.styles.textColor = [0, 0, 0];
+                data.cell.styles.fontSize = 9;
+                
+                if (data.column.index === 0) {
+                  data.cell.styles.halign = 'center';
+                  data.cell.styles.cellWidth = 25;
+                }
+              }
+            },
+            willDrawCell: function(data) {
+              if (data.row.index === data.table.body.length) {
+                doc.setDrawColor(93, 64, 55);
+                doc.setLineWidth(0.8);
+                doc.line(
+                  data.cell.x,
+                  data.cell.y,
+                  data.cell.x + data.cell.width,
+                  data.cell.y
+                );
+                
+                if (data.column.index === 0) {
+                  doc.setFillColor(220, 220, 220);
+                  doc.rect(
+                    data.table.margin.left,
+                    data.cell.y,
+                    data.table.width,
+                    data.cell.height,
+                    'F'
+                  );
+                }
+              }
+            },
+            didDrawCell: function(data) {
+              if (data.row.index === data.table.body.length && data.column.index === 0) {
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'bold');
+                doc.text(
+                  'TOTAL',
+                  data.cell.x + data.cell.width / 2,
+                  data.cell.y + data.cell.height / 2 + 3,
+                  { align: 'center' }
+                );
+              }
+            }
+          });
+
+          yPos = doc.lastAutoTable.finalY + 8;
         });
-        yPos += 2;
-      });
-
-      const totalPages = doc.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(
-          `Halaman ${i} dari ${totalPages}`,
-          pageWidth - margin,
-          doc.internal.pageSize.height - 10,
-          { align: 'right' }
-        );
-        doc.text(
-          `Laporan Gizi - ${selectedPasien.nama}`,
-          margin,
-          doc.internal.pageSize.height - 10
-        );
       }
-
-      const fileName = `Laporan_Gizi_${selectedPasien.nama.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
-      doc.save(fileName);
-
-    } catch (error) {
-      console.error('Error generating full PDF report:', error);
-      alert('Terjadi kesalahan saat membuat laporan lengkap');
-    } finally {
-      setExportLoading(false);
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Catatan: Belum ada data menu harian untuk pasien ini', margin, yPos);
+      yPos += 10;
     }
-  };
+
+    if (yPos > doc.internal.pageSize.height - 60) {
+      doc.addPage();
+      yPos = margin;
+    }
+
+    doc.setFontSize(12);
+    doc.setTextColor(93, 64, 55);
+    doc.setFont(undefined, 'bold');
+    doc.text('CATATAN DAN REKOMENDASI', margin, yPos);
+    yPos += 7;
+
+    doc.setFontSize(9);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'normal');
+
+    const recommendations = [
+      `Pasien ${selectedPasien.nama} dengan jenis diet ${selectedPasien.jenisDiet}.`,
+      `IMT sebesar ${selectedPasien.imt} termasuk dalam kategori ${selectedPasien.kategoriIMT}.`,
+      `Kebutuhan energi harian sebesar ${selectedPasien.tee} kkal.`,
+      menuData && menuData.totals ?
+        `Menu harian telah direncanakan dengan total ${(menuData.totals?.energi || 0).toFixed(1)} kkal.` :
+        'Belum ada menu harian yang direncanakan.',
+      `Disarankan untuk kontrol rutin setiap 1 bulan sekali.`,
+      `Perhatikan asupan cairan minimal 8 gelas per hari.`,
+      `Jaga pola makan teratur sesuai jadwal yang telah ditentukan.`
+    ];
+
+    recommendations.forEach((rec, index) => {
+      const lines = doc.splitTextToSize(`• ${rec}`, pageWidth - (margin * 2));
+      lines.forEach(line => {
+        if (yPos > doc.internal.pageSize.height - 15) {
+          doc.addPage();
+          yPos = margin;
+        }
+        doc.text(line, margin + 5, yPos);
+        yPos += 4;
+      });
+      yPos += 2;
+    });
+
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Halaman ${i} dari ${totalPages}`,
+        pageWidth - margin,
+        doc.internal.pageSize.height - 10,
+        { align: 'right' }
+      );
+      doc.text(
+        `Laporan Gizi - ${selectedPasien.nama}`,
+        margin,
+        doc.internal.pageSize.height - 10
+      );
+    }
+
+    const fileName = `Laporan_Gizi_${selectedPasien.nama.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+    doc.save(fileName);
+
+  } catch (error) {
+    console.error('Error generating full PDF report:', error);
+    alert('Terjadi kesalahan saat membuat laporan lengkap');
+  } finally {
+    setExportLoading(false);
+  }
+};
 
   if (loading) {
     return (
@@ -990,32 +1104,40 @@ const HistoryPage = () => {
                                 { key: 'snackSore', label: 'Snack Sore' },
                                 { key: 'makanMalam', label: 'Makan Malam' }
                               ].map((meal) => {
-                                if (!menuData.menu[meal.key] || !Array.isArray(menuData.menu[meal.key])) {
+                                const mealItems = menuData.menu && menuData.menu[meal.key];
+                                const hasItems = Array.isArray(mealItems) && mealItems.length > 0;
+                                
+                                if (!hasItems) {
                                   return null;
                                 }
 
-                                return menuData.menu[meal.key].length > 0 && (
+                                return (
                                   <div key={meal.key} className="bg-white border border-gray-200 rounded-lg p-5">
                                     <h4 className="font-semibold text-gray-800 mb-3 text-lg">{meal.label}</h4>
                                     <div className="space-y-3">
-                                      {menuData.menu[meal.key].map((food, index) => (
+                                      {mealItems.map((food, index) => (
                                         <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                                           <div>
-                                            <p className="font-medium text-gray-900">{food.NAMA_BAHAN}</p>
+                                            <p className="font-medium text-gray-900">{food.nama || food.NAMA_BAHAN || 'Tanpa Nama'}</p>
                                             <div className="flex gap-2 mt-1">
                                               <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded">
-                                                {food.ENERGI_Kal || 0} Kal
+                                                {Math.round(food.ENERGI_Kal || food.nutritionValues?.energi || 0)} Kal
                                               </span>
                                               <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded">
-                                                P: {food.PROTEIN_g || 0}g
+                                                P: {Math.round(food.PROTEIN_g || food.nutritionValues?.protein || 0)}g
                                               </span>
                                               <span className="text-xs px-2 py-1 bg-yellow-50 text-yellow-700 rounded">
-                                                L: {food.LEMAK_g || 0}g
+                                                L: {Math.round(food.LEMAK_g || food.nutritionValues?.lemak || 0)}g
                                               </span>
                                               <span className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded">
-                                                KH: {food.KH_g || 0}g
+                                                KH: {Math.round(food.KH_g || food.nutritionValues?.karbohidrat || 0)}g
                                               </span>
                                             </div>
+                                            {food.beratBahan && (
+                                              <div className="mt-2 text-xs text-gray-500">
+                                                Berat bahan: {food.beratBahan}g • BDD: {food.bdd || 100}%
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
                                       ))}
@@ -1023,6 +1145,29 @@ const HistoryPage = () => {
                                   </div>
                                 );
                               })}
+                              
+                              {Object.keys(menuData.menu || {}).filter(key => {
+                                const items = menuData.menu[key];
+                                return Array.isArray(items) && items.length > 0;
+                              }).length === 0 && (
+                                <div className="text-center py-12">
+                                  <div className="p-3 bg-gray-100 rounded-full w-12 h-12 mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                  </div>
+                                  <p className="text-gray-700 font-medium mb-4">Menu untuk pasien ini masih kosong</p>
+                                  <a
+                                    href={`/zat-gizi?pasienId=${selectedPasien.id}`}
+                                    className="inline-flex items-center px-5 py-2.5 bg-[#a8e6cf] text-[#5d4037] rounded-lg hover:bg-[#93d4bc] transition duration-200 border border-[#a8e6cf]"
+                                  >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    Tambah Menu Sekarang
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
