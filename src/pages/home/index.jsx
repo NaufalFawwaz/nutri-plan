@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { FiCheck, FiBarChart, FiCalendar, FiDollarSign, FiPackage, FiUsers, FiTrendingUp, FiHeart, FiTarget, FiClock, FiAward } from 'react-icons/fi';
+import { FiCheck, FiBarChart, FiCalendar, FiUsers, FiTrendingUp, FiHeart, FiTarget, FiClock, FiAward } from 'react-icons/fi';
 
 const AnimatedSection = ({ children, className = "", delay = 0 }) => {
   const [ref, inView] = useInView({
@@ -95,31 +95,19 @@ export default function HomePageContent() {
       icon: <FiTrendingUp className="w-8 h-8" />,
       title: "Kebutuhan Energi & Zat Gizi",
       description: "Hitung Total Energy Expenditure dan kebutuhan gizi makro-mikro",
-      points: ["TEE berdasarkan aktivitas", "Protein, lemak, karbohidrat", "Personalized plan"]
+      points: ["TEE berdasarkan aktivitas", "Protein, lemak, karbohidrat", "Perencanaan kebutuhan personal"]
     },
     {
       icon: <FiCalendar className="w-8 h-8" />,
       title: "Perencanaan Menu",
       description: "Buat menu dengan analisis gizi lengkap berdasarkan database TKPI",
-      points: ["Input bahan & berat", "Database TKPI", "Analisis kandungan", "Total gizi per menu"]
-    },
-    {
-      icon: <FiDollarSign className="w-8 h-8" />,
-      title: "Manajemen Anggaran",
-      description: "Kelola anggaran bahan makanan dengan estimasi biaya yang akurat",
-      points: ["Harga satuan bahan", "Estimasi per porsi", "Total anggaran", "Planning efisien"]
-    },
-    {
-      icon: <FiPackage className="w-8 h-8" />,
-      title: "Monitoring Stok",
-      description: "Pantau persediaan bahan makanan dengan sistem tracking real-time",
-      points: ["Stok awal & pembelian", "Tracking penggunaan", "Sisa stok otomatis", "Alert stok menipis"]
+      points: ["Input bahan & berat", "Database TKPI terpercaya", "Analisis kandungan gizi", "Total gizi per menu"]
     },
     {
       icon: <FiUsers className="w-8 h-8" />,
       title: "Laporan & Analytics",
       description: "Pantau perkembangan dengan dashboard analytics yang komprehensif",
-      points: ["Progress status gizi", "Laporan asupan", "Analisis kecukupan", "Export data"]
+      points: ["Progress status gizi", "Laporan asupan harian", "Analisis kecukupan gizi", "Export data lengkap"]
     }
   ];
 
@@ -190,7 +178,7 @@ export default function HomePageContent() {
               transition={{ duration: 0.8, delay: 0.6 }}
               className="text-xl md:text-2xl text-[#8d6e63] mb-12 max-w-2xl mx-auto leading-relaxed"
             >
-              Kelola gizi dengan presisi, rencanakan menu sehat, dan pantau stok dalam satu platform terintegrasi
+              Solusi lengkap untuk analisis gizi dan perencanaan menu sehat dalam satu platform
             </motion.p>
 
             <motion.div
@@ -203,7 +191,7 @@ export default function HomePageContent() {
                 onClick={scrollToFeatures}
                 className="cursor-pointer inline-block px-6 py-3 sm:px-8 sm:py-4 bg-[#a8e6cf] text-white font-semibold text-base sm:text-lg rounded-lg shadow-[4px_4px_0px_0px_rgba(93,64,55,0.3)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all duration-200 ease-in-out transform hover:bg-[#88d4b2] focus:outline-none focus:ring-2 focus:ring-[#a8e6cf]"
               >
-                Explore
+                Explore Fitur
               </button>
             </motion.div>
           </AnimatedSection>
@@ -224,7 +212,7 @@ export default function HomePageContent() {
                 {
                   icon: <FiAward className="w-8 h-8" />,
                   title: "Komprehensif",
-                  description: "Solusi lengkap dari analisis hingga monitoring"
+                  description: "Solusi lengkap dari analisis hingga pelaporan"
                 }
               ].map((benefit, index) => (
                 <motion.div
@@ -259,11 +247,11 @@ export default function HomePageContent() {
               Fitur <span className="text-[#a8e6cf]">Unggulan</span>
             </h2>
             <p className="text-xl text-[#8d6e63] max-w-2xl mx-auto">
-              Semua yang Anda butuhkan untuk manajemen gizi yang komprehensif dan akurat
+              Semua yang Anda butuhkan untuk manajemen gizi yang akurat dan profesional
             </p>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {features.map((feature, index) => (
               <FeatureCard3D
                 key={index}
@@ -293,22 +281,22 @@ export default function HomePageContent() {
             {[
               {
                 title: "Ahli Gizi",
-                description: "Analisis status gizi dan buat rencana diet",
+                description: "Analisis status gizi dan buat rencana diet personal",
                 color: "bg-[#a8e6cf]"
               },
               {
                 title: "Rumah Sakit",
-                description: "Kelola gizi pasien dan stok makanan",
+                description: "Manajemen gizi pasien dan perencanaan menu",
                 color: "bg-[#ffd3b6]"
               },
               {
                 title: "Restoran Sehat",
-                description: "Rencana menu dan kontrol anggaran",
+                description: "Analisis gizi menu dan perencanaan sehat",
                 color: "bg-[#ffaaa5]"
               },
               {
-                title: "Lembaga Sosial",
-                description: "Program makan komunitas & monitoring",
+                title: "Lembaga Pendidikan",
+                description: "Program makan sehat sekolah & monitoring gizi",
                 color: "bg-[#d8e3e7]"
               }
             ].map((user, index) => (

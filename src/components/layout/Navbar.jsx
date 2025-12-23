@@ -13,6 +13,7 @@ const navigationItems = [
   { name: 'Nilai Gizi', href: '/nilai-gizi', protected: true },
   { name: 'Menu Zat Gizi', href: '/zat-gizi', protected: true },
   { name: 'History', href: '/history', protected: true },
+  { name: 'Edukasi', href: '/edukasi', protected: true },
 ];
 
 const scrollToSection = (sectionId) => {

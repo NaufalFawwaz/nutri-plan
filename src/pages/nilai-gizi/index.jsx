@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
+import { FiInfo } from 'react-icons/fi';
 
 export default function NilaiGizi() {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ export default function NilaiGizi() {
     jenisDiet: ''
   });
 
+  const [showRumus, setShowRumus] = useState(false);
   const [hasil, setHasil] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -115,7 +117,6 @@ export default function NilaiGizi() {
     };
 
     const komposisi = komposisiDiet[jenisDiet];
-
     const kh = ((komposisi.karbo / 100) * tee) / 4;
     const protein = ((komposisi.protein / 100) * tee) / 4;
     const lemak = ((komposisi.lemak / 100) * tee) / 9;
@@ -197,10 +198,105 @@ export default function NilaiGizi() {
             <span className="text-[#5d4037]">Kalkulator </span>
             <span className="text-[#a8e6cf]">Nilai Gizi</span>
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
             Hitung kebutuhan gizi Anda berdasarkan data pribadi dan kondisi kesehatan
           </p>
+          
+          <button
+            onClick={() => setShowRumus(!showRumus)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-[#a8e6cf] text-[#5d4037] hover:bg-[#f0f9f5] transition-all duration-300"
+          >
+            <FiInfo className="w-4 h-4" />
+            {showRumus ? 'Sembunyikan Rumus' : 'Lihat Rumus Perhitungan'}
+          </button>
         </div>
+
+        {showRumus && (
+          <div className="mb-8 bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <FiInfo className="w-6 h-6 text-[#a8e6cf]" />
+              Rumus Perhitungan
+            </h2>
+            
+            <div className="space-y-6">
+              <div className="border-l-4 border-[#a8e6cf] pl-4">
+                <h3 className="font-bold text-lg text-gray-800 mb-2">1. Indeks Massa Tubuh (IMT)</h3>
+                <div className="bg-[#f8f6f2] p-4 rounded-xl">
+                  <code className="text-[#5d4037] font-mono text-lg">
+                    IMT = BB (kg) / (TB(m))²
+                  </code>
+                  <p className="text-gray-600 mt-2 text-sm">
+                    BB = Berat Badan, TB = Tinggi Badan
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-[#ffd3b6] pl-4">
+                <h3 className="font-bold text-lg text-gray-800 mb-2">2. Berat Badan Ideal (BBI) Broca</h3>
+                <div className="bg-[#fff8f2] p-4 rounded-xl">
+                  <code className="text-[#5d4037] font-mono text-lg">
+                    BBI = (TB - 100) - 10% (TB - 100)
+                  </code>
+                  <p className="text-gray-600 mt-2 text-sm">
+                    TB = Tinggi Badan (cm), untuk perempuan: -15% jika tinggi ≥ 150cm
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-[#ffaaa5] pl-4">
+                <h3 className="font-bold text-lg text-gray-800 mb-2">3. Rumus Mifflin-St. Jeor (BMR)</h3>
+                <div className="bg-[#fff5f5] p-4 rounded-xl">
+                  <div className="space-y-2">
+                    <div>
+                      <span className="font-semibold text-gray-700">Laki-laki:</span>
+                      <code className="block text-[#5d4037] font-mono text-lg">
+                        REE = 10 × berat (kg) + 6,25 × tinggi (cm) – 5 × usia (tahun) + 5
+                      </code>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Perempuan:</span>
+                      <code className="block text-[#5d4037] font-mono text-lg">
+                        REE = 10 × berat (kg) + 6,25 × tinggi (cm) – 5 × usia (tahun) – 161
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-[#d8e3e7] pl-4">
+                <h3 className="font-bold text-lg text-gray-800 mb-2">4. Total Energy Expenditure (TEE)</h3>
+                <div className="bg-[#f0f5f7] p-4 rounded-xl">
+                  <code className="text-[#5d4037] font-mono text-lg">
+                    TEE = BMR × Faktor Aktivitas × Faktor Stress
+                  </code>
+                  <p className="text-gray-600 mt-2 text-sm">
+                    Faktor aktivitas berdasarkan tingkat aktivitas fisik, faktor stress berdasarkan kondisi kesehatan
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-[#a8e6cf] pl-4">
+                <h3 className="font-bold text-lg text-gray-800 mb-2">5. Perhitungan Zat Gizi Makro</h3>
+                <div className="bg-[#f0f9f5] p-4 rounded-xl">
+                  <div className="space-y-2">
+                    <code className="block text-[#5d4037] font-mono text-lg">
+                      Kebutuhan protein = %kebutuhan × total energi ÷ 4
+                    </code>
+                    <code className="block text-[#5d4037] font-mono text-lg">
+                      Kebutuhan lemak = %kebutuhan × total energi ÷ 9
+                    </code>
+                    <code className="block text-[#5d4037] font-mono text-lg">
+                      Kebutuhan karbohidrat = %kebutuhan × total energi ÷ 4
+                    </code>
+                    <p className="text-gray-600 mt-2 text-sm">
+                      1 gram protein = 4 kkal, 1 gram lemak = 9 kkal, 1 gram karbohidrat = 4 kkal
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl">
