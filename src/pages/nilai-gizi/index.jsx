@@ -238,7 +238,7 @@ export default function NilaiGizi() {
                     BBI = (TB - 100) - 10% (TB - 100)
                   </code>
                   <p className="text-gray-600 mt-2 text-sm">
-                    TB = Tinggi Badan (cm), untuk perempuan: -15% jika tinggi ≥ 150cm
+                    {`Jika TB pria <160cm dan TB wanita <150 cm, tidak perlu dikurangi 10% (Brocca Modifikasi Indonesia).`}
                   </p>
                 </div>
               </div>

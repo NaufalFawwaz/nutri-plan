@@ -76,6 +76,14 @@ export default function Edukasi() {
     }
   };
 
+  const references = [
+    "Almatsier, S. (2001). Prinsip dasar ilmu gizi (Cetakan ke-VII, 2009). PT Gramedia Pustaka Utama.",
+    "Fajar, S. A. (2019). Handbook Cagi Azura: Buku catatan ahli gizi Indonesia (3rd ed.).",
+    "Mahan, L. K., & Raymond, J. L. (Eds.). (2017). Krause’s food & the nutrition care process (14th ed.). Elsevier.",
+    "Muchtadi, D. (2009). Pengantar ilmu gizi (Cetakan kedua). Alfabeta.",
+    "Pakar Gizi Indonesia. (2016). Ilmu gizi: Teori & aplikasi (Edisi revisi; Editor: Hardinsyah, I. & Supariasa, I. D. N.; Copy editor: Etika Rezkina & Monica Ester). Penerbit Buku Kedokteran EGC."
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fdf6f0] to-[#f8f6f2] text-[#5d4037] py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -109,6 +117,7 @@ export default function Edukasi() {
               { id: 'aktivitas', label: 'Aktivitas', icon: <FiActivity className="w-4 h-4" /> },
               { id: 'makronutrien', label: 'Makronutrien', icon: <FiCoffee className="w-4 h-4" /> },
               { id: 'kebutuhan', label: 'Kebutuhan', icon: <FiUsers className="w-4 h-4" /> },
+              { id: 'daftar-pustaka', label: 'Daftar Pustaka', icon: <FiInfo className="w-4 h-4" /> },
             ].map((item) => (
               <button
                 key={item.id}
@@ -652,6 +661,24 @@ export default function Edukasi() {
                     ["Berlebih", "> 115%"]
                   ]}
                 />
+              </div>
+            </div>
+          </section>
+
+          <section id="daftar-pustaka" className="scroll-mt-20">
+            <div className="bg-white rounded-2xl shadow-lg p-8 border border-[#f0f0f0]">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-14 h-14 bg-[#a8e6cf] rounded-xl flex items-center justify-center">
+                  <FiInfo className="text-white text-2xl" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#5d4037]">Daftar Pustaka</h2>
+              </div>
+              <div className="text-[#8d6e63] leading-relaxed space-y-4">
+                <ol className="list-decimal pl-6 space-y-3">
+                  {references.map((ref, idx) => (
+                    <li key={idx} className="text-base">{ref}</li>
+                  ))}
+                </ol>
               </div>
             </div>
           </section>
