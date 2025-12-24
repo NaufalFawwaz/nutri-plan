@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiBook, FiActivity, FiTarget, FiTrendingUp, FiDroplet, 
-  FiCoffee, FiUsers, FiStar, FiInfo, FiArrowUp, 
-  FiArrowDown, FiCheck, FiHeart, FiThermometer, 
+import {
+  FiBook, FiActivity, FiTarget, FiTrendingUp, FiDroplet,
+  FiCoffee, FiUsers, FiStar, FiInfo, FiArrowUp,
+  FiArrowDown, FiCheck, FiHeart, FiThermometer,
   FiBarChart2, FiSun, FiBattery, FiShield, FiZap
 } from 'react-icons/fi';
 
@@ -46,8 +46,8 @@ const Table = ({ headers, rows, title, footnote }) => {
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
-              <tr 
-                key={rowIndex} 
+              <tr
+                key={rowIndex}
                 className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-[#f8f6f2]'}
               >
                 {row.map((cell, cellIndex) => (
@@ -80,7 +80,7 @@ export default function Edukasi() {
     <div className="min-h-screen bg-gradient-to-b from-[#fdf6f0] to-[#f8f6f2] text-[#5d4037] py-8">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-12">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-5xl font-bold mb-4"
@@ -113,11 +113,10 @@ export default function Edukasi() {
               <button
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
-                  activeSection === item.id
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${activeSection === item.id
                     ? 'bg-[#a8e6cf] text-white'
                     : 'bg-white text-[#5d4037] hover:bg-[#f0f9f5]'
-                }`}
+                  }`}
               >
                 {item.icon}
                 {item.label}
@@ -239,7 +238,7 @@ export default function Edukasi() {
                 <p>
                   Indeks Massa Tubuh (IMT) adalah cara untuk mengukur status gizi dengan membandingkan berat badan dan tinggi badan. Rumus IMT adalah berat badan (kg) dibagi kuadrat tinggi badan (m²). Hasilnya kemudian dapat dikategorikan untuk mengetahui apakah seseorang berada dalam kategori berat badan kurang, normal, kelebihan, atau obesitas.
                 </p>
-                
+
                 <div className="bg-[#f0f9f5] rounded-xl p-6">
                   <h3 className="text-lg font-bold text-[#5d4037] mb-4">Rumus IMT</h3>
                   <div className="bg-white p-4 rounded-lg text-center">
@@ -280,6 +279,15 @@ export default function Edukasi() {
                 <p>
                   Jika TB pria {'<'}160cm dan TB wanita {'<'}150 cm, tidak perlu dikurangi 10% (Brocca Modifikasi Indonesia).
                 </p>
+              </div>
+              <div className="bg-[#f0f9f5] rounded-xl p-6 mt-4">
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-lg">
+                    <code className="font-bold text-xl text-[#5d4037] mb-2">
+                      BBI = (TB - 100) - 10% (TB - 100)
+                    </code>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -340,7 +348,7 @@ export default function Edukasi() {
                 <p>
                   Satuan energi digunakan untuk menggambarkan jumlah panas atau energi yang disediakan oleh berbagai makronutrien. Angka-angka tersebut diperoleh melalui penelitian menggunakan bom kalorimeter. Dan sekarang dikenal dengan Faktor Atwater.
                 </p>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="bg-[#f0f9f5] p-6 rounded-xl text-center">
                     <div className="text-4xl font-bold text-[#5d4037] mb-3">4</div>
@@ -591,20 +599,20 @@ export default function Edukasi() {
               </div>
               <div className="text-[#8d6e63] leading-relaxed space-y-6">
                 <p>Diet normal dalam sehari:</p>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="bg-[#f0f9f5] rounded-xl p-6 text-center">
                     <div className="text-3xl font-bold text-[#5d4037] mb-3">45-55%</div>
                     <div className="text-lg font-semibold text-[#8d6e63] mb-2">Karbohidrat</div>
                     <div className="text-sm text-gray-600">3–5 g/kg/hari</div>
                   </div>
-                  
+
                   <div className="bg-[#fff5f5] rounded-xl p-6 text-center">
                     <div className="text-3xl font-bold text-[#5d4037] mb-3">10-15%</div>
                     <div className="text-lg font-semibold text-[#8d6e63] mb-2">Protein</div>
                     <div className="text-sm text-gray-600">0,8–1 g/kg/hari</div>
                   </div>
-                  
+
                   <div className="bg-[#fff8f2] rounded-xl p-6 text-center">
                     <div className="text-3xl font-bold text-[#5d4037] mb-3">25-35%</div>
                     <div className="text-lg font-semibold text-[#8d6e63] mb-2">Lemak</div>

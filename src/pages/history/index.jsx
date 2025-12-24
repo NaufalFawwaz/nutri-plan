@@ -300,6 +300,7 @@ const HistoryPage = () => {
         ['ZAT GIZI', 'KEBUTUHAN', 'SATUAN'],
         ['Energi (TEE)', (selectedPasien.tee || 0).toFixed(1), 'kkal'],
         ['Protein', (selectedPasien.protein || 0).toFixed(1), 'g'],
+        ['Lemak', (selectedPasien.lemak || 0).toFixed(1), 'g'],
         ['Karbohidrat', (selectedPasien.kh || 0).toFixed(1), 'g']
       ];
 
@@ -348,6 +349,12 @@ const HistoryPage = () => {
             satuan: 'g',
             totalKey: 'protein',
             kebutuhanKey: 'protein'
+          },
+          {
+            label: 'Lemak',
+            satuan: 'g',
+            totalKey: 'lemak',
+            kebutuhanKey: 'lemak'
           },
           {
             label: 'Karbohidrat',
@@ -469,7 +476,7 @@ const HistoryPage = () => {
             yPos += 6;
 
             const mealTable = [
-              ['NO', 'NAMA BAHAN MAKANAN', 'BERAT', 'ENERGI', 'PROTEIN', 'KARBOHIDRAT']
+              ['NO', 'NAMA BAHAN MAKANAN', 'BERAT', 'ENERGI', 'PROTEIN', 'LEMAK', 'KARBOHIDRAT']
             ];
 
             foods.forEach((food, foodIndex) => {
@@ -485,6 +492,7 @@ const HistoryPage = () => {
                 beratText,
                 `${(food.ENERGI_Kal || food.nutritionValues?.energi || 0).toFixed(0)}`,
                 `${(food.PROTEIN_g || food.nutritionValues?.protein || 0).toFixed(1)}`,
+                `${(food.LEMAK_g || food.nutritionValues?.lemak || 0).toFixed(1)}`,
                 `${(food.KH_g || food.nutritionValues?.karbohidrat || 0).toFixed(1)}`
               ]);
             });
@@ -492,8 +500,9 @@ const HistoryPage = () => {
             const subTotal = foods.reduce((acc, food) => ({
               energi: acc.energi + (food.ENERGI_Kal || food.nutritionValues?.energi || 0),
               protein: acc.protein + (food.PROTEIN_g || food.nutritionValues?.protein || 0),
+              lemak: acc.lemak + (food.LEMAK_g || food.nutritionValues?.lemak || 0),
               karbohidrat: acc.karbohidrat + (food.KH_g || food.nutritionValues?.karbohidrat || 0)
-            }), { energi: 0, protein: 0, karbohidrat: 0 });
+            }), { energi: 0, protein: 0, lemak: 0, karbohidrat: 0 });
 
             mealTable.push([
               '',
@@ -501,6 +510,7 @@ const HistoryPage = () => {
               '',
               subTotal.energi.toFixed(0),
               subTotal.protein.toFixed(1),
+              subTotal.lemak.toFixed(1),
               subTotal.karbohidrat.toFixed(1)
             ]);
 
@@ -546,7 +556,8 @@ const HistoryPage = () => {
                 2: { cellWidth: 28, halign: 'center', fontSize: 7, valign: 'middle' },
                 3: { cellWidth: 20, halign: 'center', cellPadding: { right: 3 }, valign: 'middle' },
                 4: { cellWidth: 20, halign: 'center', cellPadding: { right: 3 }, valign: 'middle' },
-                5: { cellWidth: 26, halign: 'center', cellPadding: { right: 3 }, valign: 'middle' }
+                5: { cellWidth: 20, halign: 'center', cellPadding: { right: 3 }, valign: 'middle' },
+                6: { cellWidth: 25, halign: 'center', cellPadding: { right: 3 }, valign: 'middle' }
               },
               didParseCell: function (data) {
                 if (data.row.index === data.table.body.length) {
